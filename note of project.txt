@@ -1,0 +1,10 @@
+base on project e-commerce 
+-handel authentcation 
+-proudect
+-catogry
+-favorite
+-profile
+-cart
+-checkout
+-orders&track order-
+-paymob

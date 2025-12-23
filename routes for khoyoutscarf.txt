@@ -1,0 +1,143 @@
+<?php
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ProductController;
+use App\Http\Controllers\FavoriteController;
+use App\Http\Controllers\CartController;
+use App\Http\Controllers\OrderController;
+use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\ProfileapiController;
+
+///////////////////////////////////////////////////////
+//  Public Routes
+///////////////////////////////////////////////////////
+
+// Authentication
+Route::prefix('auth')->group(function () {
+    Route::post('/register', [AuthController::class, 'register']);
+    Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/reset-password', [AuthController::class, 'sendResetLink']);
+    Route::post('/update-password', [AuthController::class, 'resetPassword']);
+});
+
+// Products
+Route::prefix('products')->group(function () {
+    Route::get('/', [ProductController::class, 'index']);
+    Route::get('/search', [ProductController::class, 'search']);
+    Route::get('/{product}', [ProductController::class, 'show']);
+    Route::get('/categories/{category}', [ProductController::class, 'productsByCategory']);
+    Route::get('/variants/{variant}', [ProductController::class, 'getVariant']);
+});
+
+// Categories
+Route::apiResource('categories', CategoryController::class)->only(['index', 'show']);
+
+// Favorites
+Route::post('/favorites/{product}', [FavoriteController::class, 'toggleFavorite']);
+Route::get('/favorites', [FavoriteController::class, 'getFavorites']);
+Route::get('/favorites/products', [FavoriteController::class, 'getFavoriteProducts']);
+
+// Cart (Available for both guests and authenticated users)
+// Route::prefix('cart')->group(function () {
+//     Route::get('/', [CartController::class, 'index']);
+//     Route::post('/add/{variant}', [CartController::class, 'addToCart']);
+//     Route::put('/update/{cartItem}', [CartController::class, 'updateQuantity']);
+//     Route::delete('/remove/{cartItem}', [CartController::class, 'removeItem']);
+// });
+
+// Webhook
+// Route::post('/paymob/webhook', [PaymentController::class, 'handleWebhook'])
+//     ->name('paymob.webhook');
+
+///////////////////////////////////////////////////////
+//  Protected Routes (Authenticated Users)
+///////////////////////////////////////////////////////
+Route::middleware('auth:sanctum')->group(function () {
+    // Authentication
+    Route::delete('/auth/logout', [AuthController::class, 'logout']);
+
+    // Profile
+    Route::get('/profile', [ProfileapiController::class, 'show']);
+    Route::put('/profile', [ProfileapiController::class, 'update']);
+
+    // Orders
+    // Route::post('/checkout', [OrderController::class, 'checkout']);
+    // Route::get('/orders/{order}/track', [OrderController::class, 'trackOrder']);
+    // Route::post('/orders/{order}/pay', [PaymentController::class, 'initiatePayment']);
+});
+
+///////////////////////////////////////////////////////
+//  Admin Routes
+///////////////////////////////////////////////////////
+Route::middleware(['auth:sanctum', 'admin'])->group(function () {
+    // Products
+    Route::post('/products', [ProductController::class, 'store']);
+    Route::put('/products/{product}', [ProductController::class, 'update']);
+    Route::delete('/products/{product}', [ProductController::class, 'destroy']);
+
+    // Categories
+    Route::post('/categories', [CategoryController::class, 'store']);
+    Route::put('/categories/{category}', [CategoryController::class, 'update']);
+    Route::delete('/categories/{category}', [CategoryController::class, 'destroy']);
+
+    // Orders
+    // Route::put('/orders/{order}/status', [OrderController::class, 'updateStatus']);
+});
+
+///////////////////////////////////////////////////////
+//  Test Route
+///////////////////////////////////////////////////////
+Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
+    return $request->user();
+});
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+use App\Http\Controllers\AddressController;
+
+// إدارة العناوين
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/addresses', [AddressController::class, 'index']);
+    Route::post('/addresses', [AddressController::class, 'store']);
+    Route::put('/addresses/{address}', [AddressController::class, 'update']);
+    Route::delete('/addresses/{address}', [AddressController::class, 'destroy']);
+    Route::post('/addresses/{address}/set-default', [AddressController::class, 'setDefault']);
+});
+
+// إدارة الطلبات
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/checkout', [OrderController::class, 'checkout']);
+    Route::get('/orders/{order}/track', [OrderController::class, 'trackOrder']);
+});
+
+// تتبع الطلبات العام
+// Route::get('/tracking/{order}/{hash}', [OrderController::class, 'publicTracking'])
+//     ->name('order.tracking');
+
+// للمشرفين فقط
+Route::middleware(['auth:sanctum', 'admin'])->group(function () {
+    Route::put('/orders/{order}/status', [OrderController::class, 'updateStatus']);
+});
+
+// إدارة السلة (للمستخدمين المسجلين والزوار)
+Route::prefix('cart')->group(function () {
+    Route::get('/', [CartController::class, 'index']);
+    Route::post('/add/{variant}', [CartController::class, 'addToCart']);
+Route::put('/cart/{id}', [CartController::class, 'updateQuantity']);
+    Route::delete('/remove/{cartItem}', [CartController::class, 'removeItem']);
+    Route::post('/transfer', [CartController::class, 'transferGuestCart']);
+});
+
+// إدارة الدفع
+Route::prefix('payments')->group(function () {
+    Route::post('/webhook', [PaymentController::class, 'handleWebhook']);
+});
+
+// تتبع الطلبات العام
+Route::get('/tracking/{order}/{hash}', [OrderController::class, 'publicTracking'])
+    ->name('order.tracking');
+   // عرض جميع طلبات المستخدم
+Route::get('user/orders', [OrderController::class, 'getUserOrders']);
